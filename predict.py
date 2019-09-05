@@ -61,6 +61,8 @@ with tf.Session() as sess:
 	if args.reconstruct:
 		reconstructions = decoder_output_value.reshape([-1, 28, 28])
 
+	print(y_pred_value)
+
 	plt.figure(figsize=(n_samples * 2, 3))
 	for index in range(n_samples):
 		plt.subplot(1, n_samples, index + 1)
