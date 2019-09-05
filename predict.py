@@ -26,7 +26,7 @@ n_samples = 5
 
 idx = np.random.choice(x_test.shape[0], size=n_samples, replace=False)
 sample_images = x_test[idx, :]
-sample_images = sample_images.reshape(-1, 28, 28,1)
+sample_images = sample_images.reshape(-1, 28, 28, 1)
 
 # Placeholders
 X = tf.placeholder(shape=[None, 28, 28, 1], dtype=tf.float32, name="X")
@@ -41,14 +41,15 @@ y_prob_argmax = tf.argmax(y_prob, axis=2, name="y_predicted_argmax")
 y_pred = tf.squeeze(y_prob_argmax, axis=[1, 2], name="y_pred")
 
 if args.reconstruct:
-	reconstruction_loss, decoder_output = reconstruct(caps2_output, mask_with_labels, X, y, y_pred, Labels, outputDimension)
+	reconstruction_loss, decoder_output = reconstruct(caps2_output, mask_with_labels, X, y, y_pred, Labels,
+													  outputDimension)
 
 saver = tf.train.Saver()
 with tf.Session() as sess:
 	saver.restore(sess, checkpoint_path)
 	if args.reconstruct:
-		caps2_output_value, decoder_output_value, y_pred_value = sess.run(
-			[caps2_output, decoder_output, y_pred],
+		caps2_output_value, decoder_output_value, y_pred_value, y_prob_pred = sess.run(
+			[caps2_output, decoder_output, y_pred, y_prob],
 			feed_dict={X: sample_images,
 					   y: np.array([], dtype=np.int64)})
 	else:
@@ -61,7 +62,7 @@ with tf.Session() as sess:
 	if args.reconstruct:
 		reconstructions = decoder_output_value.reshape([-1, 28, 28])
 
-	print(y_pred_value)
+	print(y_prob_pred)
 
 	plt.figure(figsize=(n_samples * 2, 3))
 	for index in range(n_samples):
@@ -70,7 +71,7 @@ with tf.Session() as sess:
 		plt.title("Label:" + str(y_test[idx][index]))
 		plt.axis("off")
 
-	plt.savefig(os.path.join(args.directory , "initial.png"))
+	plt.savefig(os.path.join(args.directory, "initial.png"))
 
 	plt.figure(figsize=(n_samples * 2, 3))
 	for index in range(n_samples):
@@ -79,4 +80,4 @@ with tf.Session() as sess:
 		if args.reconstruct:
 			plt.imshow(reconstructions[index], cmap="binary")
 		plt.axis("off")
-	plt.savefig(os.path.join(args.directory , "predict.png"))
+	plt.savefig(os.path.join(args.directory, "predict.png"))
