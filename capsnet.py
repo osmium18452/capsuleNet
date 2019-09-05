@@ -163,7 +163,7 @@ if __name__ == "__main__":
 						help="Which gpu(s) you want to use.")
 	parser.add_argument("--showimg", default=False, type=bool,
 						help="Whether to show the first n training images.")
-	parser.add_argument("-n", "--nimg", default=5, type=int,
+	parser.add_argument("--nimg", default=5, type=int,
 						help="How many images you want to show.")
 	parser.add_argument("--restore", default=False,
 						help="Restore the trained model or not.")
@@ -171,6 +171,10 @@ if __name__ == "__main__":
 						help="The director the model saving to.")
 	parser.add_argument("-r", "--reconstruct", default=True,
 						help="Reconstruct the image.")
+	parser.add_argument("-n","--name",default="saved_model",
+						help="The name of your model.")
+	parser.add_argument("-o","--only_eval",default=False,
+						help="Only evaluate the model.")
 	args = parser.parse_args()
 	print(args)
 	
@@ -257,65 +261,91 @@ if __name__ == "__main__":
 	n_iterations_per_epoch = x_train.shape[0] // batch_size
 	n_iterations_validation = x_test.shape[0] // batch_size
 	best_loss_val = np.infty
-	checkpoint_path = os.path.join(args.directory, "saved_model")
-	
+	checkpoint_path = os.path.join(args.directory, args.name)
+
+	if not args.only_eval:
+		with tf.Session() as sess:
+			if restore_checkpoint and tf.train.checkpoint_exists(checkpoint_path):
+				saver.restore(sess, checkpoint_path)
+				print()
+				print("model restored")
+				print()
+			else:
+				init.run()
+
+			for epoch in range(n_epochs):
+				for iteration in range(1, n_iterations_per_epoch + 1):
+					idx = np.random.choice(x_train.shape[0], size=batch_size, replace=False)
+					x_batch = x_train[idx, :]
+					y_batch = y_train[idx]
+					# X_batch, y_batch = mnist.train.next_batch(batch_size)
+					# Train and validate the loss
+					if args.reconstruct:
+						_, loss_train = sess.run(
+							[training_op, loss],
+							feed_dict={X: x_batch.reshape([-1, 28, 28, 1]),
+									   y: y_batch,
+									   mask_with_labels: True})
+					else:
+						_, loss_train = sess.run(
+							[training_op, loss],
+							feed_dict={X: x_batch.reshape([-1, 28, 28, 1]),
+									   y: y_batch})
+					print("\rIteration: {}/{} ({:.1f}%)  Loss: {:.5f}".format(
+						iteration, n_iterations_per_epoch,
+						iteration * 100 / n_iterations_per_epoch,
+						loss_train),
+						end="")
+
+				# Evaluate the model after each epoch.
+				loss_vals = []
+				acc_vals = []
+				for iteration in range(1, n_iterations_validation + 1):
+					idx = np.random.choice(x_test.shape[0], size=batch_size, replace=False)
+					x_batch_test = x_test[idx, :]
+					y_batch_test = y_test[idx]
+					loss_val, acc_val = sess.run(
+						[loss, accuracy],
+						feed_dict={X: x_batch_test.reshape([-1, 28, 28, 1]),
+								   y: y_batch_test})
+					loss_vals.append(loss_val)
+					acc_vals.append(acc_val)
+					print("\rEvaluating the model: {}/{} ({:.1f}%)".format(
+						iteration, n_iterations_validation,
+						iteration * 100 / n_iterations_validation),
+						end=" " * 10)
+				loss_val = np.mean(loss_vals)
+				acc_val = np.mean(acc_vals)
+				print("\rEpoch: {}  Val accuracy: {:.4f}%  Loss: {:.6f}{}".format(
+					epoch + 1, acc_val * 100, loss_val,
+					" (improved)" if loss_val < best_loss_val else ""))
+
+				# Save the model is the model is the best at present.
+				if loss_val < best_loss_val:
+					save_path = saver.save(sess, checkpoint_path)
+					best_loss_val = loss_val
+
+	n_iterations_test = x_test.shape[0] // batch_size
 	with tf.Session() as sess:
-		if restore_checkpoint and tf.train.checkpoint_exists(checkpoint_path):
-			saver.restore(sess, checkpoint_path)
-			print()
-			print("model restored")
-			print()
-		else:
-			init.run()
-		
-		for epoch in range(n_epochs):
-			for iteration in range(1, n_iterations_per_epoch + 1):
-				idx = np.random.choice(x_train.shape[0], size=batch_size, replace=False)
-				x_batch = x_train[idx, :]
-				y_batch = y_train[idx]
-				# X_batch, y_batch = mnist.train.next_batch(batch_size)
-				# Train and validate the loss
-				if args.reconstruct:
-					_, loss_train = sess.run(
-						[training_op, loss],
-						feed_dict={X: x_batch.reshape([-1, 28, 28, 1]),
-								   y: y_batch,
-								   mask_with_labels: True})
-				else:
-					_, loss_train = sess.run(
-						[training_op, loss],
-						feed_dict={X: x_batch.reshape([-1, 28, 28, 1]),
-								   y: y_batch})
-				print("\rIteration: {}/{} ({:.1f}%)  Loss: {:.5f}".format(
-					iteration, n_iterations_per_epoch,
-					iteration * 100 / n_iterations_per_epoch,
-					loss_train),
-					end="")
-			
-			# Evaluate the model after each epoch.
-			loss_vals = []
-			acc_vals = []
-			for iteration in range(1, n_iterations_validation + 1):
-				idx = np.random.choice(x_test.shape[0], size=batch_size, replace=False)
-				x_batch_test = x_test[idx, :]
-				y_batch_test = y_test[idx]
-				loss_val, acc_val = sess.run(
-					[loss, accuracy],
-					feed_dict={X: x_batch_test.reshape([-1, 28, 28, 1]),
-							   y: y_batch_test})
-				loss_vals.append(loss_val)
-				acc_vals.append(acc_val)
-				print("\rEvaluating the model: {}/{} ({:.1f}%)".format(
-					iteration, n_iterations_validation,
-					iteration * 100 / n_iterations_validation),
-					end=" " * 10)
-			loss_val = np.mean(loss_vals)
-			acc_val = np.mean(acc_vals)
-			print("\rEpoch: {}  Val accuracy: {:.4f}%  Loss: {:.6f}{}".format(
-				epoch + 1, acc_val * 100, loss_val,
-				" (improved)" if loss_val < best_loss_val else ""))
-			
-			# Save the model is the model is the best at present.
-			if loss_val < best_loss_val:
-				save_path = saver.save(sess, checkpoint_path)
-				best_loss_val = loss_val
+		saver.restore(sess, checkpoint_path)
+
+		loss_tests = []
+		acc_tests = []
+		for iteration in range(1, n_iterations_test + 1):
+			idx = np.random.choice(x_test.shape[0], size=batch_size, replace=False)
+			x_batch = x_test[idx, :]
+			y_batch = y_test[idx]
+			loss_test, acc_test = sess.run(
+				[loss, accuracy],
+				feed_dict={X: x_batch.reshape([-1, 28, 28, 1]),
+						   y: y_batch})
+			loss_tests.append(loss_test)
+			acc_tests.append(acc_test)
+			print("\rEvaluating the model: {}/{} ({:.1f}%)".format(
+				iteration, n_iterations_test,
+				iteration * 100 / n_iterations_test),
+				end=" " * 10)
+		loss_test = np.mean(loss_tests)
+		acc_test = np.mean(acc_tests)
+		print("\rFinal test accuracy: {:.4f}%  Loss: {:.6f}".format(
+			acc_test * 100, loss_test))
