@@ -67,10 +67,10 @@ with tf.Session() as sess:
 	for index in range(n_samples):
 		plt.subplot(1, n_samples, index + 1)
 		plt.imshow(sample_images[index], cmap="binary")
-		plt.title("Label:" + str(y_test[idx, index]))
+		plt.title("Label:" + str(y_test[idx][index]))
 		plt.axis("off")
 
-	plt.savefig(args.directory + "/initial.png")
+	plt.savefig(os.path.join(args.directory , "initial.png"))
 
 	plt.figure(figsize=(n_samples * 2, 3))
 	for index in range(n_samples):
@@ -79,4 +79,4 @@ with tf.Session() as sess:
 		if args.reconstruct:
 			plt.imshow(reconstructions[index], cmap="binary")
 		plt.axis("off")
-	plt.savefig(checkpoint_path + "/predict.png")
+	plt.savefig(os.path.join(args.directory , "predict.png"))
