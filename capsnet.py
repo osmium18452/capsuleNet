@@ -165,11 +165,11 @@ if __name__ == "__main__":
 						help="Whether to show the first n training images.")
 	parser.add_argument("--nimg", default=5, type=int,
 						help="How many images you want to show.")
-	parser.add_argument("--restore", default=False,
+	parser.add_argument("--restore", default=False,type=bool,
 						help="Restore the trained model or not.")
-	parser.add_argument("-d", "--directory", default="/saved_model",
+	parser.add_argument("-d", "--directory", default="./saved_model",
 						help="The director the model saving to.")
-	parser.add_argument("-r", "--reconstruct", default=True,
+	parser.add_argument("-r", "--reconstruct", default=False,type=bool
 						help="Reconstruct the image.")
 	parser.add_argument("-n", "--name", default="saved_model",
 						help="The name of your model.")
