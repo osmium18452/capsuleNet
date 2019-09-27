@@ -231,6 +231,9 @@ if __name__ == "__main__":
 
 	# Reconstruction
 	if args.reconstruct:
+		print("=============")
+		print("reconstructed")
+		print("=============")
 		mask_with_labels = tf.placeholder_with_default(False, shape=(), name="mask_with_labels")
 		reconstruction_loss, decoder_output = reconstruct(capsOutput, mask_with_labels, X, y, y_pred, Labels, outputDimension)
 
@@ -238,6 +241,9 @@ if __name__ == "__main__":
 		alpha = 0.00001  # The alpha parameter will ensure that the margin loss can dominate the training process.
 		loss = tf.add(margin_loss, alpha * reconstruction_loss, name="loss")
 	else:
+		print("=================")
+		print("no reconstruction")
+		print("=================")
 		loss = margin_loss
 
 	# Accuracy
@@ -328,7 +334,6 @@ if __name__ == "__main__":
 	n_iterations_test = x_test.shape[0] // batch_size
 	with tf.Session() as sess:
 		saver.restore(sess, checkpoint_path)
-
 		loss_tests = []
 		acc_tests = []
 		for iteration in range(1, n_iterations_test + 1):
@@ -349,3 +354,4 @@ if __name__ == "__main__":
 		acc_test = np.mean(acc_tests)
 		print("\rFinal test accuracy: {:.4f}%  Loss: {:.6f}".format(
 			acc_test * 100, loss_test))
+		dict=sess.run(y_prob_argmax,feed_dict={X:x_test[0:10],y:y_test[0:10]})
